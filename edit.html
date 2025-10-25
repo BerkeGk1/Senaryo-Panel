@@ -2,73 +2,85 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <title>Senaryo Düzenleyici</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Senaryo Diyalog Düzenleme</title>
   <style>
     body {
-      font-family: sans-serif;
-      margin: 2rem;
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
     }
     textarea {
       width: 100%;
-      height: 150px;
-      margin-bottom: 1rem;
+      height: 500px;
+      padding: 12px;
+      font-size: 16px;
       font-family: monospace;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+      resize: vertical;
     }
     button {
-      padding: 0.6rem 1.2rem;
-      font-size: 1rem;
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 16px;
+      background-color: #2a9d8f;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #21867a;
+    }
+    .status {
+      margin-top: 15px;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
-  <h1>Senaryo Diyalog Düzenleme</h1>
-  <form id="dialogueForm">
-    <div id="fields"></div>
-    <button type="submit">Kaydet</button>
-  </form>
+  <h1>Diyalogları Düzenle</h1>
+  <textarea id="dialogueBox" placeholder="Diyaloglar buraya yüklenecek..."></textarea>
+  <button onclick="submitDialogue()">Kaydet</button>
+  <div class="status" id="statusText"></div>
 
   <script>
-    let originalData;
-
-    async function fetchData() {
-      const res = await fetch('https://otomasyon.versusyoutube.cloud/webhook/Senaryo%20Getir?id=all');
-      originalData = await res.json();
-
-      const fieldsDiv = document.getElementById('fields');
-      originalData.forEach((scene, idx) => {
-        const label = document.createElement('label');
-        label.textContent = `Sahne ${scene.idx} (${scene.scene_id})`;
-        const textarea = document.createElement('textarea');
-        textarea.name = `scene_${idx}`;
-        textarea.value = scene.dialogue_text;
-
-        fieldsDiv.appendChild(label);
-        fieldsDiv.appendChild(textarea);
-      });
+    // GET isteği ile diyalogları getir
+    async function fetchDialogue() {
+      try {
+        const response = await fetch("/SenaryoGetir");
+        if (!response.ok) throw new Error("Sunucu hatası");
+        const data = await response.json();
+        document.getElementById("dialogueBox").value = data.dialogue_text || "Veri bulunamadı.";
+      } catch (error) {
+        document.getElementById("statusText").innerText = "Diyaloglar yüklenemedi.";
+      }
     }
 
-    document.getElementById('dialogueForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const form = e.target;
-      const updatedData = structuredClone(originalData);
-
-      updatedData.forEach((scene, idx) => {
-        const newText = form.elements[`scene_${idx}`].value;
-        scene.dialogue_text = newText;
+    // POST isteği ile güncellenmiş diyalogları gönder
+    async function submitDialogue() {
+      const updatedText = document.getElementById("dialogueBox").value;
+      const response = await fetch("/SenaryoGuncelle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updated_dialogue_text: updatedText })
       });
 
-      await fetch('https://otomasyon.versusyoutube.cloud/webhook/Senaryo%20Guncelle', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(updatedData)
-      });
+      if (response.ok) {
+        document.getElementById("statusText").innerText = "Güncelleme başarıyla gönderildi.";
+      } else {
+        document.getElementById("statusText").innerText = "Gönderim başarısız.";
+      }
+    }
 
-      alert('Güncellendi!');
-    });
-
-    fetchData();
+    fetchDialogue();
   </script>
 </body>
 </html>
